@@ -55,13 +55,13 @@ CREATE PROC g4_sp_operaciones
    	@t_trn           INT 	     =99,
    	@i_numero_cuenta VARCHAR(10),
    	@i_cliente       VARCHAR(30),
-   	@i_saldo         FLOAT
-   	
+   	@i_saldo         FLOAT,
+   	@i_tipo_cuenta   CHAR(1)
  
    
 AS
 
-	DECLARE @w_tipo_cuenta CHAR(1),
+	DECLARE 
 	        @w_saldoActual FLOAT,
 	        @w_error       INT
 	        
@@ -70,39 +70,27 @@ AS
 --opcion: C - depositar
 
 if @i_operacion = 'C' 
-begin
-
-    IF EXISTS (SELECT 1 FROM g4_cuenta_ahorros WHERE ca_banco = @i_numero_cuenta AND ca_cliente= @i_cliente)
-    BEGIN
-       SELECT @w_saldoActual = ca_saldo
-       FROM g4_cuenta_ahorros 
-       WHERE ca_banco = @i_numero_cuenta 
-       AND ca_cliente= @i_cliente
+BEGIN
+   IF @i_tipo_cuenta = 1
+   BEGIN 
+   
+      IF EXISTS (SELECT 1 FROM g4_cuenta_ahorros WHERE ca_banco = @i_numero_cuenta AND ca_cliente= @i_cliente)
+      BEGIN
+        SELECT @w_saldoActual = ca_saldo
+        FROM g4_cuenta_ahorros 
+        WHERE ca_banco = @i_numero_cuenta 
+        AND ca_cliente= @i_cliente
        
-       UPDATE g4_cuenta_ahorros
-       SET ca_saldo = @w_saldoActual+  @i_saldo
-       WHERE ca_banco = @i_numero_cuenta 
-       AND ca_cliente= @i_cliente
+        UPDATE g4_cuenta_ahorros
+        SET ca_saldo = @w_saldoActual+  @i_saldo,
+            ca_fecha_modificacion = getdate(),
+        WHERE ca_banco = @i_numero_cuenta 
+        AND ca_cliente= @i_cliente
     
-    END 
-    ELSE
-    BEGIN
-       IF EXISTS (SELECT 1 FROM g4_cuenta_corriente WHERE ca_banco = @i_numero_cuenta AND ca_cliente= @i_cliente)
+      END 
+      ELSE
        BEGIN
-             SELECT @w_saldoActual = ca_saldo
-    		 FROM g4_cuenta_corriente 
-    		 WHERE ca_banco = @i_numero_cuenta 
-    		 AND ca_cliente= @i_cliente
-    		 
-    		 UPDATE g4_cuenta_corriente
-    		 SET ca_saldo = @w_saldoActual+  @i_saldo
-    		 WHERE ca_banco = @i_numero_cuenta 
-    		 AND ca_cliente= @i_cliente
-       
-       END
-       ELSE
-       BEGIN
-            SELECT @w_error=0712
+            SELECT @w_error=4000
 		
 			exec cobis..sp_cerror
          
@@ -116,13 +104,42 @@ begin
        
        
        END
+   
+   END
+   
+   IF @i_tipo_cuenta = 2
+   BEGIN
+      IF EXISTS (SELECT 1 FROM g4_cuenta_corriente WHERE ca_banco = @i_numero_cuenta AND ca_cliente= @i_cliente)
+       BEGIN
+             SELECT @w_saldoActual = ca_saldo
+    		 FROM g4_cuenta_corriente 
+    		 WHERE ca_banco = @i_numero_cuenta 
+    		 AND ca_cliente= @i_cliente
+    		 
+    		 UPDATE g4_cuenta_corriente
+    		 SET ca_saldo = @w_saldoActual+  @i_saldo,
+    		     ca_fecha_modificacion = getdate(),
+    		 WHERE ca_banco = @i_numero_cuenta 
+    		 AND ca_cliente= @i_cliente
        
-    
-    END
-    
-
-
-
+       END
+   END
+   ELSE
+       BEGIN
+            SELECT @w_error=4000
+		
+			exec cobis..sp_cerror
+         
+         	@t_debug = 'N',
+         	@t_file  = null,
+         	@t_from  = 'g4_sp_operaciones',
+         	@i_num   = @w_error
+         
+         	return 1
+       
+       
+       
+       END
 	
 
 end
@@ -135,29 +152,45 @@ end
 
 --opcion: R - retirar
 
-
 if @i_operacion = 'R' 
-begin
-
-    IF EXISTS (SELECT 1 FROM g4_cuenta_ahorros WHERE ca_banco = @i_numero_cuenta AND ca_cliente= @i_cliente)
-    BEGIN
-       SELECT @w_saldoActual = ca_saldo
-       FROM g4_cuenta_ahorros 
-       WHERE ca_banco = @i_numero_cuenta 
-       AND ca_cliente= @i_cliente
+BEGIN
+   IF @i_tipo_cuenta = 1
+   BEGIN 
+   
+      IF EXISTS (SELECT 1 FROM g4_cuenta_ahorros WHERE ca_banco = @i_numero_cuenta AND ca_cliente= @i_cliente)
+      BEGIN
+        SELECT @w_saldoActual = ca_saldo
+        FROM g4_cuenta_ahorros 
+        WHERE ca_banco = @i_numero_cuenta 
+        AND ca_cliente= @i_cliente
        
        IF @w_saldoActual > @i_saldo
-       begin
+     	 BEGIN
+     	 UPDATE g4_cuenta_ahorros
+     	 SET ca_saldo = @w_saldoActual- @i_saldo,
+     	     ca_fecha_modificacion = getdate(),
+     	 WHERE ca_banco = @i_numero_cuenta 
+     	 AND ca_cliente= @i_cliente
+     	 END
+     	 ELSE
+     	 BEGIN
+     	    SELECT @w_error=4001
+	 
+	   		exec cobis..sp_cerror
+         		
+         		@t_debug = 'N',
+         		@t_file  = null,
+         		@t_from  = 'g4_sp_operaciones',
+         		@i_num   = @w_error
+         		
+         		return 1
        
-       UPDATE g4_cuenta_ahorros
-       SET ca_saldo = @w_saldoActual - @i_saldo
-       WHERE ca_banco = @i_numero_cuenta 
-       AND ca_cliente= @i_cliente
-       
-       END
-       ELSE
+     	
+    	 END
+      END 
+      ELSE
        BEGIN
-       SELECT @w_error=1991 -- no existe cuemnta
+            SELECT @w_error=4000
 		
 			exec cobis..sp_cerror
          
@@ -168,30 +201,51 @@ begin
          
          	return 1
        
+       
+       
        END
-    
-    END 
-    ELSE
-    BEGIN
-       IF EXISTS (SELECT 1 FROM g4_cuenta_corriente WHERE ca_banco = @i_numero_cuenta AND ca_cliente= @i_cliente)
+   
+   END
+   
+   IF @i_tipo_cuenta = 2
+   BEGIN
+      IF EXISTS (SELECT 1 FROM g4_cuenta_corriente WHERE ca_banco = @i_numero_cuenta AND ca_cliente= @i_cliente)
        BEGIN
              SELECT @w_saldoActual = ca_saldo
     		 FROM g4_cuenta_corriente 
     		 WHERE ca_banco = @i_numero_cuenta 
     		 AND ca_cliente= @i_cliente
-    		 
+    		
     		 IF @w_saldoActual > @i_saldo
-       begin
-       
-       UPDATE g4_cuenta_corriente
-       SET ca_saldo = @w_saldoActual - @i_saldo
-       WHERE ca_banco = @i_numero_cuenta 
-       AND ca_cliente= @i_cliente
+    		 BEGIN
+    		 UPDATE g4_cuenta_corriente
+    		 SET ca_saldo = @w_saldoActual- @i_saldo,
+    		     ca_fecha_modificacion = getdate(),
+    		 WHERE ca_banco = @i_numero_cuenta 
+    		 AND ca_cliente= @i_cliente
+    		 END
+    		 ELSE
+    		 BEGIN
+    		    SELECT @w_error=4001
+		
+		  		exec cobis..sp_cerror
+          		
+          		@t_debug = 'N',
+          		@t_file  = null,
+          		@t_from  = 'g4_sp_operaciones',
+          		@i_num   = @w_error
+          		
+          		return 1
+        
+    		 
+    		 
+    		 END
        
        END
-       ELSE
+   END
+   ELSE
        BEGIN
-       SELECT @w_error=1991 -- error porq no hay saldo
+            SELECT @w_error=4000
 		
 			exec cobis..sp_cerror
          
@@ -202,34 +256,24 @@ begin
          
          	return 1
        
-       END
-       END
-       ELSE
-       BEGIN
-            SELECT @w_error=1990 -- no existe cuenta
-		
-			exec cobis..sp_cerror
-         
-         	@t_debug = 'N',
-         	@t_file  = null,
-         	@t_from  = 'g4_sp_operaciones',
-         	@i_num   = @w_error
-         
-         	return 1
-       
        
        
        END
-       
-    
-    END
-    
+	
+
+end
+
+
+
+
+
+
+
 
 
 
 	
 
-end
 
 
 
