@@ -51,7 +51,7 @@ declare
 
 -- Variables
 select @w_sp_name = 'g4_sp_gen_code'
-select @w_str_result = '0'
+select @w_str_result = '1'
 select @w_numero_digitos = 9
 select @w_bandera_generacion = 0 
 -- Variables para generar aleatorio entre 0 y 9 
@@ -86,7 +86,7 @@ BEGIN
       begin
       print 'Codigo repetido'
          select @w_bandera_generacion = 0 
-         select @w_str_result = '0'
+         select @w_str_result = '1'
          
       end
    
@@ -120,13 +120,14 @@ BEGIN
       begin
       print 'Codigo repetido'
          select @w_bandera_generacion = 0 
-         select @w_str_result = '0'
+         select @w_str_result = '1'
          
       end
    
    END
 END
 
+PRINT @w_str_result
 select @o_cod_id_reg = convert(VARCHAR(10),@w_str_result)
 return 0
 

@@ -38,17 +38,16 @@ AS
               @o_cod_id_reg  = @w_respuesta OUTPUT,
               @i_operacion   = 'C'
     	
-    	
-    	
-    	
-    	INSERT INTO g4_cuenta_ahorros
-    		(ca_banco, ca_fecha_creacion, ca_fecha_modificacion, ca_cliente, ca_saldo)
+    	INSERT INTO g4_cuenta_corriente
+    		(ca_banco,      ca_fecha_creacion, ca_fecha_modificacion, ca_cliente, ca_saldo)
     	VALUES 
-    		(@i_banco, getdate(),		  null,             @i_cliente, @i_saldo)
+    		(@w_respuesta,  getdate(),		   null,                  @i_cliente, @i_saldo)
     END
     
    return 0
    
+
+
 
 
 GO

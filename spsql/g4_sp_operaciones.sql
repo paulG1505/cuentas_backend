@@ -53,7 +53,7 @@ CREATE PROC g4_sp_operaciones
    	@t_file          varchar(14) = NULL,
    	@i_operacion     char(1),
    	@t_trn           INT 	     =99,
-   	@i_numero_cuenta VARCHAR(10),
+   	@i_numero_cuenta INT,
    	@i_cliente       VARCHAR(30),
    	@i_saldo         FLOAT,
    	@i_tipo_cuenta   CHAR(1)
@@ -63,8 +63,73 @@ AS
 
 	DECLARE 
 	        @w_saldoActual FLOAT,
-	        @w_error       INT
+	        @w_error       INT,
+	        @w_ced_cliente VARCHAR(30),
+	        @w_nom_cliente VARCHAR(30),
+	        @w_ape_cliente VARCHAR(30),
+	        @w_tipo_cuenta varCHAR(10),
+	        @w_num_cuenta  INT
 	        
+	        
+	        
+	        
+	        
+--opcion: Q - consultar datos de cuenta
+
+if @i_operacion = 'Q'
+BEGIN
+   IF EXISTS (SELECT 1 FROM g4_cuenta_ahorros WHERE ca_banco = @i_numero_cuenta)
+      BEGIN
+         IF(@i_tipo_cuenta=0)
+         BEGIN
+       
+            SELECT  @w_tipo_cuenta ='Ahorros', 
+                    @w_num_cuenta  = ca_banco,
+                    @w_ced_cliente = cl_cedula,
+                    @w_nom_cliente = cl_nombre,
+                    @w_ape_cliente = cl_apellido,
+                    @w_saldoActual = ca_saldo
+                    
+            FROM    g4_cuenta_ahorros,cliente_taller 
+            WHERE   cl_id= ca_cliente
+            AND     ca_banco = @i_numero_cuenta
+            
+                 
+            
+         END
+         IF(@i_tipo_cuenta=1)
+         BEGIN
+       
+            SELECT  @w_tipo_cuenta='Corriente', 
+                    @w_num_cuenta  = ca_banco,
+                    @w_ced_cliente = cl_cedula,
+                    @w_nom_cliente = cl_nombre,
+                    @w_ape_cliente = cl_apellido,
+                    @w_saldoActual = ca_saldo
+                    
+            FROM    g4_cuenta_corriente,cliente_taller 
+            WHERE   cl_id= ca_cliente
+            AND     ca_banco = @i_numero_cuenta
+          
+         END
+         
+         SELECT 'Tipo_Cuenta'       =@w_tipo_cuenta,
+                'Numero_Cuenta'     =@w_num_cuenta,  
+                'Cedula_Cliente'    =@w_ced_cliente, 
+                'Nombre_Cliente'    =@w_nom_cliente, 
+                'Apellido_Cliente'  =@w_ape_cliente,
+                'Saldo'             = @w_saldoActual
+     
+      END        
+                 
+END
+
+
+
+ 
+
+
+       
 			
   
 --opcion: C - depositar
@@ -83,7 +148,7 @@ BEGIN
        
         UPDATE g4_cuenta_ahorros
         SET ca_saldo = @w_saldoActual+  @i_saldo,
-            ca_fecha_modificacion = getdate(),
+            ca_fecha_modificacion = getdate()
         WHERE ca_banco = @i_numero_cuenta 
         AND ca_cliente= @i_cliente
     
@@ -118,7 +183,7 @@ BEGIN
     		 
     		 UPDATE g4_cuenta_corriente
     		 SET ca_saldo = @w_saldoActual+  @i_saldo,
-    		     ca_fecha_modificacion = getdate(),
+    		     ca_fecha_modificacion = getdate()
     		 WHERE ca_banco = @i_numero_cuenta 
     		 AND ca_cliente= @i_cliente
        
@@ -168,7 +233,7 @@ BEGIN
      	 BEGIN
      	 UPDATE g4_cuenta_ahorros
      	 SET ca_saldo = @w_saldoActual- @i_saldo,
-     	     ca_fecha_modificacion = getdate(),
+     	     ca_fecha_modificacion = getdate()
      	 WHERE ca_banco = @i_numero_cuenta 
      	 AND ca_cliente= @i_cliente
      	 END
@@ -220,7 +285,7 @@ BEGIN
     		 BEGIN
     		 UPDATE g4_cuenta_corriente
     		 SET ca_saldo = @w_saldoActual- @i_saldo,
-    		     ca_fecha_modificacion = getdate(),
+    		     ca_fecha_modificacion = getdate()
     		 WHERE ca_banco = @i_numero_cuenta 
     		 AND ca_cliente= @i_cliente
     		 END
@@ -280,20 +345,6 @@ end
 
 
 --opcion: T - transferir
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
